@@ -7,6 +7,7 @@ curl / chat UI -> localhost:8080 -> (port-forward) -> AgentGateway in kind -> ho
 1. Start OrbStack, then `make up`.
 2. Make Ollama reachable from containers (it binds to localhost by default):
    `launchctl setenv OLLAMA_HOST 0.0.0.0:11434`, then quit and reopen the Ollama app. Keep the macOS firewall on.
+   This is a Phase 1a shortcut: Phase 1b restricts Ollama to the OrbStack bridge address (see the security gate in `docs/PLAN.md`).
 3. `make ollama-check` — must print `ok`.
 4. `make platform` — installs Gateway API, AgentGateway, the Gateway, the Ollama backend and the `/llm` route.
 5. In a second terminal: `make gateway-forward`.
