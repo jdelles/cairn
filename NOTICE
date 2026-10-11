@@ -1,0 +1,6 @@
+Cairn
+Copyright 2026 James Delles
+
+This product includes or integrates with the following third-party open-source projects
+(each under its own license): Quyet (Apache-2.0), AgentGateway, KServe, Knative, CloudNativePG,
+Qdrant, Kubernetes/kind, Buoyant (Apache-2.0 OR MIT).

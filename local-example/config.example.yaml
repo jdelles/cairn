@@ -1,0 +1,9 @@
+# Copy to ./local/config.yaml (gitignored). Never commit real values.
+llm:
+  # Host-side Ollama (Metal GPU). Reached from the cluster via host.docker.internal.
+  endpoint: http://host.docker.internal:11434
+  model: "<your-ollama-model>"
+market_data:
+  provider: alpaca-iex   # free tier
+  # API keys live in macOS Keychain or ./local/secrets.env, never in git
+institutions: []         # e.g. checking, credit cards, brokerage -- kept local
