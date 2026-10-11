@@ -55,7 +55,8 @@ ollama-check: ## Verify host Ollama is reachable from inside the cluster
 	./scripts/ollama-check.sh
 
 gateway-forward: ## Expose the gateway on localhost:8080 (leave running)
-	kubectl -n agentgateway-system port-forward svc/agentgateway-proxy 8080:80
+	@echo "forwarding localhost:8080 -> gateway (auto-reconnects; Ctrl-C to stop)"
+	@while true; do kubectl -n agentgateway-system port-forward svc/agentgateway-proxy 8080:80; echo "port-forward dropped, reconnecting..."; sleep 1; done
 
 smoke: ## Send one chat through the gateway (needs `make gateway-forward` running)
 	./scripts/smoke-chat.sh
@@ -68,7 +69,8 @@ ui: ## Deploy the chat UI (Open WebUI) wired to the gateway
 	@echo "Next: make ui-forward, then open http://localhost:3000"
 
 ui-forward: ## Expose the chat UI on http://localhost:3000 (leave running)
-	kubectl -n cairn port-forward svc/open-webui 3000:80
+	@echo "forwarding http://localhost:3000 -> chat UI (auto-reconnects; Ctrl-C to stop)"
+	@while true; do kubectl -n cairn port-forward svc/open-webui 3000:80; echo "port-forward dropped, reconnecting..."; sleep 1; done
 
 data: ## Install Postgres (CloudNativePG) and Qdrant in namespace cairn
 	helm repo add cnpg https://cloudnative-pg.github.io/charts --force-update

@@ -1,0 +1,8 @@
+# Vector DB for derived/semantic data only; Postgres stays the source of truth.
+replicaCount: 1
+apiKey: true            # chart generates a random key into a Secret in this namespace
+persistence:
+  size: 5Gi
+resources:
+  requests: { cpu: 100m, memory: 256Mi }
+  limits: { memory: 1Gi }
