@@ -3,7 +3,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 CLUSTER ?= cairn
 
-.PHONY: help bootstrap doctor fmt lint test build ci up down clean platform ollama-check gateway-forward smoke
+.PHONY: help bootstrap doctor fmt lint test build ci up down clean platform ollama-check gateway-forward smoke ui ui-forward
 
 help: ## Show targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n",$$1,$$2}'
@@ -59,6 +59,16 @@ gateway-forward: ## Expose the gateway on localhost:8080 (leave running)
 
 smoke: ## Send one chat through the gateway (needs `make gateway-forward` running)
 	./scripts/smoke-chat.sh
+
+ui: ## Deploy the chat UI (Open WebUI) wired to the gateway
+	kubectl apply -f infra/platform/ui/open-webui.yaml
+	@kubectl -n cairn get secret open-webui-secret >/dev/null 2>&1 || \
+	  kubectl -n cairn create secret generic open-webui-secret --from-literal=key=$$(openssl rand -hex 32)
+	kubectl -n cairn rollout status deploy/open-webui --timeout=300s
+	@echo "Next: make ui-forward, then open http://localhost:3000"
+
+ui-forward: ## Expose the chat UI on http://localhost:3000 (leave running)
+	kubectl -n cairn port-forward svc/open-webui 3000:80
 
 down: ## Delete the local kind cluster
 	kind delete cluster --name $(CLUSTER)
