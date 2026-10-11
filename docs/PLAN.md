@@ -85,6 +85,8 @@ cairn/
 - `make up`: kind cluster → Flux → Gateway API → AgentGateway → Postgres → Qdrant → object store → observability.
 - Ollama on host with one chat LLM + one embedding model; AgentGateway routes `/v1/chat/completions` to it.
 - Off-the-shelf chat UI → AgentGateway → LLM. 
+- **Phase 1a (done in PR #5):** gateway → host Ollama smoke path over plain HTTP. This is a deliberate, temporary shortcut.
+- **Phase 1b — transport security, step 1:** bind Ollama to the OrbStack bridge address only (not `0.0.0.0`) and keep the macOS firewall on; cert-manager with a local CA; HTTPS listener on the gateway.
 - Exit: you chat with a local model through the gateway; traces visible in Grafana.
 
 **Phase 2 — KServe + first MCP tool (week 2)**
@@ -94,6 +96,7 @@ cairn/
 - Exit: "How much did we spend on dining last month?" answered from seeded synthetic data with a cited tool call.
 
 **Phase 3 — Statement ingestion (weeks 3–4)**
+- **SECURITY GATE — no real statements or balances enter the system until all of these are true:** (1) gateway listener is HTTPS (Phase 1b); (2) Ollama hop is restricted to the OrbStack bridge, not exposed on the LAN; (3) **mTLS between all in-cluster services** (service mesh, e.g. Istio ambient — confirm AgentGateway compatibility first — or equivalent) and TLS from the gateway to every backend; (4) default-deny NetworkPolicies; (5) Postgres/object-store volumes encrypted. Until then, use `fixtures/` synthetic data only.
 - Upload → object store → Knative Eventing → parser → normalization → dedupe → categorization (rules first, LLM for the leftovers, with human-review queue).
 - Prefer CSV/OFX/QFX exports over PDF wherever the bank offers them (far more reliable); PDF path via text extraction + schema-validated LLM extraction, with reconciliation checks (statement ending balance must tie out).
 - Start with Wells Fargo checking + one credit card; add institutions one at a time.
@@ -112,6 +115,7 @@ cairn/
 - Eval harness: golden questions with expected tool calls and numerically verified answers; runs in CI against synthetic data.
 
 **Phase 6 — Hardening**
+- Re-verify the Phase 3 security gate (mTLS, NetworkPolicies, TLS everywhere) with a scripted check in `make e2e`.
 - AuthN (OIDC passkeys via Keycloak/Authentik behind the gateway), per-tool authorization policies, audit log, encrypted backups (CNPG → object store), restore drill, threat model.
 
 ## 5. CI/CD & Makefile contract
@@ -125,6 +129,7 @@ GitHub Actions:
 - Flux image-automation or tag bumps promote versions via PR — GitOps all the way.
 
 ## 6. Security & privacy (non-negotiable for this use case)
+- **Transport security is gated, not deferred:** plain HTTP is allowed only while the system holds synthetic data. The Phase 3 security gate (HTTPS at the gateway, restricted Ollama hop, mTLS in-cluster, NetworkPolicies) must pass before any real statement is ingested. Known limitation: Ollama itself has no TLS/auth, so that hop is protected by network restriction, not cryptography.
 - Raw statements and real balances never enter git, CI, or logs. CI uses `fixtures/` synthetic data only.
 - Secrets and personal config live only in `local/` / Keychain — not even encrypted in git (public repo). Object store and Postgres volumes encrypted (FileVault + app-level encryption for statement blobs).
 - Redaction in traces/logs (account numbers masked at the gateway).

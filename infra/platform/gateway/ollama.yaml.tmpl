@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: agentgateway-system
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: 11434
+      targetPort: 11434
+      protocol: TCP
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: ollama
+  namespace: agentgateway-system
+  labels:
+    kubernetes.io/service-name: ollama
+addressType: IPv4
+endpoints:
+  - addresses:
+      - "__OLLAMA_IP__"
+ports:
+  - port: 11434
+    protocol: TCP
+---
+# No fixed `model`: the caller's model name (e.g. qwen2.5:7b, gemma4:e4b) passes through to Ollama.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: ollama
+  namespace: agentgateway-system
+spec:
+  ai:
+    provider:
+      openai: {}
+      host: ollama.agentgateway-system.svc.cluster.local
+      port: 11434
+      path: /v1/chat/completions

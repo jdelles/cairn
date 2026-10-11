@@ -3,7 +3,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 CLUSTER ?= cairn
 
-.PHONY: help bootstrap doctor fmt lint test build ci up down clean
+.PHONY: help bootstrap doctor fmt lint test build ci up down clean platform ollama-check gateway-forward smoke
 
 help: ## Show targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n",$$1,$$2}'
@@ -36,6 +36,29 @@ ci: lint test ## What CI runs on every PR
 up: ## Create the local kind cluster (platform install arrives in Phase 1)
 	kind create cluster --config infra/kind/kind-config.yaml || true
 	kubectl cluster-info --context kind-$(CLUSTER)
+
+include infra/platform/versions.env
+export GWAPI_VERSION AGW_VERSION
+
+platform: ## Install Gateway API + AgentGateway and route /llm to host Ollama
+	kubectl apply --server-side --force-conflicts -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v$(GWAPI_VERSION)/standard-install.yaml
+	helm upgrade -i agentgateway-crds oci://cr.agentgateway.dev/charts/agentgateway-crds \
+	  --create-namespace --namespace agentgateway-system --version $(AGW_VERSION)
+	helm upgrade -i agentgateway oci://cr.agentgateway.dev/charts/agentgateway \
+	  --namespace agentgateway-system --version $(AGW_VERSION) --wait
+	kubectl apply -f infra/platform/gateway/gateway.yaml
+	./scripts/render-ollama.sh | kubectl apply -f -
+	kubectl apply -f infra/platform/gateway/llm-route.yaml
+	kubectl -n agentgateway-system wait --for=condition=Programmed gateway/agentgateway-proxy --timeout=180s
+
+ollama-check: ## Verify host Ollama is reachable from inside the cluster
+	./scripts/ollama-check.sh
+
+gateway-forward: ## Expose the gateway on localhost:8080 (leave running)
+	kubectl -n agentgateway-system port-forward svc/agentgateway-proxy 8080:80
+
+smoke: ## Send one chat through the gateway (needs `make gateway-forward` running)
+	./scripts/smoke-chat.sh
 
 down: ## Delete the local kind cluster
 	kind delete cluster --name $(CLUSTER)
