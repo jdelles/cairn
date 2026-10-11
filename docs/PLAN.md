@@ -1,5 +1,7 @@
 # Cairn — Setup & Implementation Plan
 
+**Status (2026-10-11):** Phase 0 done; Phase 1a/chat UI/data stores done and verified; finance-mcp deployed, gateway call pending verification. See "Where we stopped" at the end.
+
 *Drafted 2026-10-11. Goal: a family-CFO AI platform on a production-style stack that runs on one Mac.*
 
 ## 1. Target architecture
@@ -147,3 +149,21 @@ GitHub Actions:
 1. Phase 0 skeleton in `jdelles/cairn` (done: see repo).
 2. Write ADR-001 and the kind + Flux bootstrap.
 3. Get "hello gateway" — Ollama behind AgentGateway answering from the chat UI — running locally.
+
+## 9. Where we stopped (2026-10-11) and what is next
+
+Built and verified: kind cluster, AgentGateway, chat through the gateway to host Ollama (`qwen2.5:7b`, `gemma4:e4b` available),
+Open WebUI, Postgres (CloudNativePG), Qdrant, finance-mcp (2 tools) deployed.
+
+Deviations from the original plan, on purpose:
+- **No Flux yet.** Platform install is `make` + Helm + `kubectl apply` (idempotent). Flux/GitOps is still the target; adopt it before the cluster grows much more.
+- **Plain HTTP between components for now.** Allowed only with synthetic data; see the Phase 3 security gate.
+- **No observability stack yet** (Grafana/Tempo traces were part of the Phase 1 exit criterion).
+
+Next, in order:
+1. Merge the Host-header fix PR, run `make mcp` then `make smoke-mcp` to prove an MCP call through the gateway.
+2. Connect the chat model to the MCP tools (decide: Open WebUI native MCP/tool support vs. a first LangGraph `cfo-agent` behind the gateway) and ask "what did we spend on groceries in September?" on synthetic data.
+3. Phase 1b transport security: Ollama bound to the OrbStack bridge only, cert-manager + HTTPS listener, NetworkPolicies.
+4. Observability (OpenTelemetry -> Grafana/Tempo) and Flux.
+5. Phase 2 remainder: KServe, embedding model and Quyet decision model, CI e2e on kind.
+6. Phase 3 (real statements) only after the security gate passes.

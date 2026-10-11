@@ -128,10 +128,23 @@ async fn main() -> anyhow::Result<()> {
     let pool = connect().await?;
     let server = FinanceMcp { pool };
 
+    // DNS-rebinding protection stays ON: only these Host headers are accepted. The defaults cover local
+    // runs and the in-cluster Service names the gateway uses; override with ALLOWED_HOSTS (comma-separated).
+    let allowed_hosts: Vec<String> = env::var("ALLOWED_HOSTS")
+        .unwrap_or_else(|_| {
+            "localhost,127.0.0.1,::1,finance-mcp,finance-mcp.cairn,finance-mcp.cairn.svc,\
+             finance-mcp.cairn.svc.cluster.local"
+                .into()
+        })
+        .split(',')
+        .map(|h| h.trim().to_string())
+        .filter(|h| !h.is_empty())
+        .collect();
+    tracing::info!(?allowed_hosts, "accepting Host headers");
     let service = StreamableHttpService::new(
         move || Ok(server.clone()),
         LocalSessionManager::default().into(),
-        StreamableHttpServerConfig::default(),
+        StreamableHttpServerConfig::default().with_allowed_hosts(allowed_hosts),
     );
     let app = axum::Router::new()
         .route("/healthz", axum::routing::get(|| async { "ok" }))

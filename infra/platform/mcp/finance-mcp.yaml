@@ -26,6 +26,8 @@ spec:
             # verify the server cert; moving to verify-ca (cairn-db-ca) is part of the Phase 3 security gate.
             - name: DATABASE_URL
               value: postgres://$(DB_USER):$(DB_PASS)@cairn-db-rw.cairn.svc.cluster.local:5432/cairn?sslmode=require
+            - name: ALLOWED_HOSTS     # Host-header allowlist (DNS-rebinding protection stays on)
+              value: localhost,127.0.0.1,finance-mcp,finance-mcp.cairn,finance-mcp.cairn.svc,finance-mcp.cairn.svc.cluster.local
             - name: RUST_LOG
               value: info
           readinessProbe:
