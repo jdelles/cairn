@@ -1,5 +1,6 @@
 [licenses]
-allow = ["Apache-2.0", "MIT", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Unicode-3.0", "Zlib", "CC0-1.0"]
+# CDLA-Permissive-2.0: webpki-roots (Mozilla CA bundle) via sqlx/rustls; permissive data license.
+allow = ["Apache-2.0", "MIT", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Unicode-3.0", "Zlib", "CC0-1.0", "CDLA-Permissive-2.0"]
 
 [advisories]
 yanked = "deny"
