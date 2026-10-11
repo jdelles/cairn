@@ -30,3 +30,15 @@ OpenAI-style clients that append `/chat/completions` to `/llm`; adjust `llm-rout
 Known unknowns (unverified against a live cluster): model-list endpoint (above), and whether Open WebUI's
 `/llm/chat/completions` path is accepted by the gateway route. Streaming responses may also need a gateway tweak.
 Open WebUI's built-in RAG downloads a small embedding model on first use; we are not using that feature.
+
+## Data stores (Postgres + Qdrant)
+
+`make data` installs the CloudNativePG operator (chart 0.29.0) and a one-instance `cairn-db` cluster, plus Qdrant
+(chart 1.19.1) with a generated API key, all in namespace `cairn`. `make data-status` lists pods/services/secret names.
+
+In-cluster endpoints (for later services): Postgres `cairn-db-rw.cairn.svc:5432` (credentials in secret
+`cairn-db-app`), Qdrant `qdrant.cairn.svc:6333` REST / `:6334` gRPC (key in the chart-generated secret).
+
+Known unknowns (unverified against a live cluster): the exact name of the Qdrant API-key secret and whether
+`apiKey: true` is the right switch in chart 1.19.1; check `make data-status` output and the chart's values.yaml.
+Secrets stay in the cluster; never paste them into the repo or chats. No NetworkPolicies yet (Phase 1b gate).

@@ -3,7 +3,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 CLUSTER ?= cairn
 
-.PHONY: help bootstrap doctor fmt lint test build ci up down clean platform ollama-check gateway-forward smoke ui ui-forward
+.PHONY: help bootstrap doctor fmt lint test build ci up down clean platform ollama-check gateway-forward smoke ui ui-forward data data-status
 
 help: ## Show targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n",$$1,$$2}'
@@ -38,7 +38,7 @@ up: ## Create the local kind cluster (platform install arrives in Phase 1)
 	kubectl cluster-info --context kind-$(CLUSTER)
 
 include infra/platform/versions.env
-export GWAPI_VERSION AGW_VERSION
+export GWAPI_VERSION AGW_VERSION CNPG_CHART_VERSION QDRANT_CHART_VERSION
 
 platform: ## Install Gateway API + AgentGateway and route /llm to host Ollama
 	kubectl apply --server-side --force-conflicts -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v$(GWAPI_VERSION)/standard-install.yaml
@@ -69,6 +69,22 @@ ui: ## Deploy the chat UI (Open WebUI) wired to the gateway
 
 ui-forward: ## Expose the chat UI on http://localhost:3000 (leave running)
 	kubectl -n cairn port-forward svc/open-webui 3000:80
+
+data: ## Install Postgres (CloudNativePG) and Qdrant in namespace cairn
+	helm repo add cnpg https://cloudnative-pg.github.io/charts --force-update
+	helm repo add qdrant https://qdrant.github.io/qdrant-helm --force-update
+	helm upgrade -i cnpg cnpg/cloudnative-pg --namespace cnpg-system --create-namespace \
+	  --version $(CNPG_CHART_VERSION) --wait
+	kubectl create namespace cairn --dry-run=client -o yaml | kubectl apply -f -
+	kubectl apply -f infra/platform/data/postgres-cluster.yaml
+	helm upgrade -i qdrant qdrant/qdrant --namespace cairn --version $(QDRANT_CHART_VERSION) \
+	  -f infra/platform/data/qdrant-values.yaml --wait --timeout 5m
+	kubectl -n cairn wait --for=condition=Ready cluster/cairn-db --timeout=300s
+	@$(MAKE) --no-print-directory data-status
+
+data-status: ## Show data-store pods, services and secret names (never prints secret values)
+	kubectl -n cairn get cluster,pods,svc,pvc
+	@echo "secrets:" && kubectl -n cairn get secret -o name | grep -E 'cairn-db|qdrant' || true
 
 down: ## Delete the local kind cluster
 	kind delete cluster --name $(CLUSTER)
