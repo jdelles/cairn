@@ -34,7 +34,8 @@ build: ## Build Rust workspace (release)
 ci: lint test ## What CI runs on every PR
 
 up: ## Create the local kind cluster (platform install arrives in Phase 1)
-	kind create cluster --config infra/kind/kind-config.yaml || true
+	@docker info >/dev/null 2>&1 || { echo "Docker daemon not reachable. Start OrbStack (open -a OrbStack) and retry."; exit 1; }
+	@kind get clusters 2>/dev/null | grep -qx '$(CLUSTER)' && echo "cluster '$(CLUSTER)' already exists" || kind create cluster --config infra/kind/kind-config.yaml
 	kubectl cluster-info --context kind-$(CLUSTER)
 
 down: ## Delete the local kind cluster

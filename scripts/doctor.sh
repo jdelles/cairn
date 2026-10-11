@@ -7,6 +7,9 @@ opt()  { if command -v "$1" >/dev/null 2>&1; then printf "  ok   %s\n" "$1"; els
 echo "Required:"
 need cargo "rustup"; need uv "brew install uv"; need docker "OrbStack"; need kind "brew install kind"
 need kubectl "brew install kubectl"; need helm "brew install helm"; need make "xcode-select --install"
+if command -v docker >/dev/null 2>&1; then
+  if docker info >/dev/null 2>&1; then echo "  ok   docker daemon reachable"; else echo "  MISSING docker daemon not running (open -a OrbStack)"; fail=1; fi
+fi
 echo "Optional:"
 opt flux "brew install fluxcd/tap/flux"; opt pre-commit "brew install pre-commit"; opt gitleaks "brew install gitleaks"; opt ollama "brew install ollama"
 if command -v ollama >/dev/null 2>&1; then
