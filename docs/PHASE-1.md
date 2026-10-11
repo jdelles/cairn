@@ -17,3 +17,16 @@ Exit criterion: step 6 returns a completion. Chat UI wiring and Grafana traces a
 
 Known unknowns (not verified against a live cluster yet): whether the gateway needs a path rewrite for
 OpenAI-style clients that append `/chat/completions` to `/llm`; adjust `llm-route.yaml` if smoke fails.
+
+## Chat UI (Open WebUI)
+
+1. `make ui` — deploys Open WebUI v0.12.0 in namespace `cairn`, pointed at the gateway (`/llm`), with a generated
+   secret key that stays only in your cluster.
+2. `make ui-forward`, then open http://localhost:3000. The first account you create becomes the admin. After that,
+   set `ENABLE_SIGNUP` to `"false"` in `infra/platform/ui/open-webui.yaml` and `make ui` again.
+3. Pick a model. If the model list is empty (the gateway may not serve `GET /llm/models`), open
+   Admin Settings -> Connections -> the OpenAI connection and add `qwen2.5:7b` and `gemma4:e4b` under model IDs.
+
+Known unknowns (unverified against a live cluster): model-list endpoint (above), and whether Open WebUI's
+`/llm/chat/completions` path is accepted by the gateway route. Streaming responses may also need a gateway tweak.
+Open WebUI's built-in RAG downloads a small embedding model on first use; we are not using that feature.
