@@ -1,0 +1,13 @@
+# Generic builder for any Rust binary in the workspace: docker build -f Dockerfile.rust --build-arg BIN=finance-mcp .
+FROM rust:1-slim AS build
+ARG BIN
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential cmake pkg-config && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
+COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
+COPY crates ./crates
+RUN cargo build --release -p ${BIN} && cp target/release/${BIN} /app
+
+FROM gcr.io/distroless/cc-debian12:nonroot
+COPY --from=build /app /app
+USER nonroot
+ENTRYPOINT ["/app"]

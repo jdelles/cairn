@@ -1,0 +1,50 @@
+# Exposes finance-mcp to agents/clients ONLY via the gateway at /mcp.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: finance-mcp
+  namespace: agentgateway-system
+spec:
+  mcp:
+    targets:
+      - name: finance
+        static:
+          host: finance-mcp.cairn.svc.cluster.local
+          port: 80
+          protocol: StreamableHTTP     # UNVERIFIED enum value; docs only show SSE. See docs/PHASE-2.md.
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: mcp
+  namespace: agentgateway-system
+spec:
+  parentRefs:
+    - name: agentgateway-proxy
+      namespace: agentgateway-system
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /mcp
+      backendRefs:
+        - name: finance-mcp
+          namespace: agentgateway-system
+          group: agentgateway.dev
+          kind: AgentgatewayBackend
+---
+# The Service lives in namespace cairn, the route in agentgateway-system: allow the cross-namespace reference.
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-gateway-to-finance-mcp
+  namespace: cairn
+spec:
+  from:
+    - group: agentgateway.dev
+      kind: AgentgatewayBackend
+      namespace: agentgateway-system
+  to:
+    - group: ""
+      kind: Service
+      name: finance-mcp

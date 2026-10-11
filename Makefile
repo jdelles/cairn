@@ -3,7 +3,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 CLUSTER ?= cairn
 
-.PHONY: help bootstrap doctor fmt lint test build ci up down clean platform ollama-check gateway-forward smoke ui ui-forward data data-status
+.PHONY: help bootstrap doctor fmt lint test build ci up down clean platform ollama-check gateway-forward smoke ui ui-forward data data-status db-migrate db-seed image-finance-mcp mcp mcp-status
 
 help: ## Show targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n",$$1,$$2}'
@@ -87,6 +87,26 @@ data: ## Install Postgres (CloudNativePG) and Qdrant in namespace cairn
 data-status: ## Show data-store pods, services and secret names (never prints secret values)
 	kubectl -n cairn get cluster,pods,svc,pvc
 	@echo "secrets:" && kubectl -n cairn get secret -o name | grep -E 'cairn-db|qdrant' || true
+
+db-migrate: ## Apply SQL migrations to the cluster database
+	./scripts/migrate.sh
+
+db-seed: ## Migrate and load SYNTHETIC demo data (never real data)
+	./scripts/migrate.sh --seed
+
+image-finance-mcp: ## Build the finance-mcp image and load it into kind
+	docker build -f Dockerfile.rust --build-arg BIN=finance-mcp -t cairn/finance-mcp:dev .
+	kind load docker-image cairn/finance-mcp:dev --name $(CLUSTER)
+
+mcp: image-finance-mcp ## Deploy finance-mcp and route /mcp through the gateway
+	kubectl apply -f infra/platform/mcp/finance-mcp.yaml
+	kubectl -n cairn rollout restart deploy/finance-mcp
+	kubectl -n cairn rollout status deploy/finance-mcp --timeout=180s
+	kubectl apply -f infra/platform/mcp/finance-mcp-route.yaml
+
+mcp-status: ## Show finance-mcp pod/route status
+	kubectl -n cairn get deploy,pods -l app=finance-mcp
+	kubectl -n agentgateway-system get agentgatewaybackend,httproute
 
 down: ## Delete the local kind cluster
 	kind delete cluster --name $(CLUSTER)
