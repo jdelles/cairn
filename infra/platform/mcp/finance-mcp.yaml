@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: finance-mcp
+  namespace: cairn
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: finance-mcp }
+  template:
+    metadata:
+      labels: { app: finance-mcp }
+    spec:
+      containers:
+        - name: finance-mcp
+          image: cairn/finance-mcp:dev          # built locally and loaded into kind (make image-finance-mcp)
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_USER
+              valueFrom: { secretKeyRef: { name: cairn-db-app, key: username } }
+            - name: DB_PASS
+              valueFrom: { secretKeyRef: { name: cairn-db-app, key: password } }
+            # CloudNativePG only accepts TLS for remote connections. sslmode=require encrypts but does not
+            # verify the server cert; moving to verify-ca (cairn-db-ca) is part of the Phase 3 security gate.
+            - name: DATABASE_URL
+              value: postgres://$(DB_USER):$(DB_PASS)@cairn-db-rw.cairn.svc.cluster.local:5432/cairn?sslmode=require
+            - name: RUST_LOG
+              value: info
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 256Mi }
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: finance-mcp
+  namespace: cairn
+spec:
+  selector: { app: finance-mcp }
+  ports:
+    - name: mcp
+      port: 80
+      targetPort: 8080
+      appProtocol: agentgateway.dev/mcp   # tells AgentGateway to speak MCP to this backend
