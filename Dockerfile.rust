@@ -9,5 +9,5 @@ RUN cargo build --release -p ${BIN} && cp target/release/${BIN} /app
 
 FROM gcr.io/distroless/cc-debian12:nonroot
 COPY --from=build /app /app
-USER nonroot
+USER 65532:65532
 ENTRYPOINT ["/app"]
