@@ -15,8 +15,7 @@ curl / chat UI -> localhost:8080 -> (port-forward) -> AgentGateway in kind -> ho
 
 Exit criterion: step 6 returns a completion. Chat UI wiring and Grafana traces are the next Phase 1 increments.
 
-Known unknowns (not verified against a live cluster yet): whether the gateway needs a path rewrite for
-OpenAI-style clients that append `/chat/completions` to `/llm`; adjust `llm-route.yaml` if smoke fails.
+Verified on a live cluster (2026-10-11): `make smoke` returns a completion, and Open WebUI chats through `/llm`.
 
 ## Chat UI (Open WebUI)
 
@@ -27,9 +26,9 @@ OpenAI-style clients that append `/chat/completions` to `/llm`; adjust `llm-rout
 3. Pick a model. If the model list is empty (the gateway may not serve `GET /llm/models`), open
    Admin Settings -> Connections -> the OpenAI connection and add `qwen2.5:7b` and `gemma4:e4b` under model IDs.
 
-Known unknowns (unverified against a live cluster): model-list endpoint (above), and whether Open WebUI's
-`/llm/chat/completions` path is accepted by the gateway route. Streaming responses may also need a gateway tweak.
+Verified: chat works through the gateway. If the model list is empty, add model IDs by hand as above.
 Open WebUI's built-in RAG downloads a small embedding model on first use; we are not using that feature.
+`kubectl port-forward` can drop on long connections; the `*-forward` targets reconnect automatically.
 
 ## Data stores (Postgres + Qdrant)
 
@@ -39,6 +38,5 @@ Open WebUI's built-in RAG downloads a small embedding model on first use; we are
 In-cluster endpoints (for later services): Postgres `cairn-db-rw.cairn.svc:5432` (credentials in secret
 `cairn-db-app`), Qdrant `qdrant.cairn.svc:6333` REST / `:6334` gRPC (key in the chart-generated secret).
 
-Known unknowns (unverified against a live cluster): the exact name of the Qdrant API-key secret and whether
-`apiKey: true` is the right switch in chart 1.19.1; check `make data-status` output and the chart's values.yaml.
+Verified: `cairn-db` reports healthy, Qdrant runs with a generated API key (secret `qdrant-apikey`).
 Secrets stay in the cluster; never paste them into the repo or chats. No NetworkPolicies yet (Phase 1b gate).
