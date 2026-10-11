@@ -3,7 +3,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 CLUSTER ?= cairn
 
-.PHONY: help bootstrap doctor fmt lint test build ci up down clean platform ollama-check gateway-forward smoke ui ui-forward data data-status db-migrate db-seed image-finance-mcp mcp mcp-status
+.PHONY: help bootstrap doctor fmt lint test build ci up down clean platform ollama-check gateway-forward smoke ui ui-forward data data-status db-migrate db-seed image-finance-mcp mcp mcp-status smoke-mcp
 
 help: ## Show targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n",$$1,$$2}'
@@ -103,6 +103,9 @@ mcp: image-finance-mcp ## Deploy finance-mcp and route /mcp through the gateway
 	kubectl -n cairn rollout restart deploy/finance-mcp
 	kubectl -n cairn rollout status deploy/finance-mcp --timeout=180s
 	kubectl apply -f infra/platform/mcp/finance-mcp-route.yaml
+
+smoke-mcp: ## MCP initialize/list/call through the gateway (needs `make gateway-forward`)
+	./scripts/smoke-mcp.sh
 
 mcp-status: ## Show finance-mcp pod/route status
 	kubectl -n cairn get deploy,pods -l app=finance-mcp
